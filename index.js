@@ -1,8 +1,10 @@
 const Parser = require('rss-parser');
 const fs = require('fs-extra');
-const config = require('./config.json'); // CommonJS handles JSON imports directly
+const Handlebars = require('handlebars'); // Added Handlebars
+const config = require('./config.json');
 
 const parser = new Parser();
+let feedTemplate = null; // To store the compiled template
 
 async function fetchFeedItems(feedUrl) {
   try {
@@ -11,7 +13,8 @@ async function fetchFeedItems(feedUrl) {
       title: item.title,
       link: item.link,
       pubDate: item.pubDate,
-      feedTitle: feed.title
+      feedTitle: feed.title,
+      content: item['content:encoded'] || item.content || item.summary || item.description || ''
     }));
   } catch (error) {
     console.error(`Error fetching feed from ${feedUrl}:`, error);
@@ -19,7 +22,28 @@ async function fetchFeedItems(feedUrl) {
   }
 }
 
+function createSnippet(htmlContent, maxLength = 200) {
+  if (!htmlContent) {
+    return '';
+  }
+  // Strip HTML tags
+  const textContent = htmlContent.replace(/<[^>]*>/g, '');
+  // Replace multiple spaces/newlines with a single space
+  const cleanedText = textContent.replace(/\s+/g, ' ').trim();
+
+  if (cleanedText.length <= maxLength) {
+    return cleanedText;
+  }
+  // Truncate and add ellipsis
+  return cleanedText.substring(0, maxLength - 3) + '...';
+}
+
 async function generateHtmlPage() {
+  if (!feedTemplate) {
+    console.error("Feed template not loaded. Cannot generate HTML.");
+    return;
+  }
+
   let allItems = [];
   if (config.feeds && Array.isArray(config.feeds)) {
     for (const feedUrl of config.feeds) {
@@ -42,69 +66,45 @@ async function generateHtmlPage() {
     }
   });
 
-  let htmlContent = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My RSS Feed Aggregator</title>
-  <style>
-    body { font-family: sans-serif; line-height: 1.6; padding: 20px; background-color: #f4f4f4; color: #333; }
-    .container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    h1 { color: #333; text-align: center; }
-    .feed-item { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
-    .feed-item:last-child { border-bottom: none; }
-    .feed-item h2 { margin: 0 0 5px 0; }
-    .feed-item h2 a { color: #007bff; text-decoration: none; }
-    .feed-item h2 a:hover { text-decoration: underline; }
-    .feed-item p { margin: 5px 0; font-size: 0.9em; }
-    .feed-item .meta { font-size: 0.8em; color: #666; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Aggregated RSS Feeds</h1>
-`;
+  // Prepare data for Handlebars template
+  const viewData = {
+    items: allItems.map(item => ({
+      ...item,
+      pubDate: item.pubDate ? new Date(item.pubDate).toLocaleString() : 'N/A',
+      title: item.title || 'No title',
+      link: item.link || '#',
+      feedTitle: item.feedTitle || 'N/A',
+      snippet: createSnippet(item.content)
+    }))
+  };
 
-  if (allItems.length === 0) {
-    htmlContent += '<p>No items to display. Check console for errors if feeds are configured, or if feeds returned no items.</p>';
-  } else {
-    allItems.forEach(item => {
-      const pubDate = item.pubDate ? new Date(item.pubDate).toLocaleString() : 'N/A';
-      const title = item.title || 'No title';
-      const link = item.link || '#';
-      const feedTitle = item.feedTitle || 'N/A';
-
-      htmlContent += `
-      <div class="feed-item">
-        <h2><a href="${link}" target="_blank" rel="noopener noreferrer">${title}</a></h2>
-        <p class="meta">From: ${feedTitle}</p>
-        <p class="meta">Published: ${pubDate}</p>
-      </div>
-`;
-    });
-  }
-
-  htmlContent += `
-  </div>
-</body>
-</html>
-`;
+  const htmlContent = feedTemplate(viewData);
 
   try {
     await fs.writeFile('public/index.html', htmlContent);
-    console.log('Successfully generated public/index.html');
+    console.log('Successfully generated public/index.html using Handlebars template.');
   } catch (error) {
     console.error('Error writing HTML file:', error);
   }
 }
 
-// Create public directory if it doesn't exist
-fs.ensureDir('public')
-  .then(() => {
-    generateHtmlPage();
-  })
-  .catch(err => {
-    console.error('Error creating public directory:', err);
-  });
+async function main() {
+  try {
+    // Load and compile the Handlebars template
+    const templateString = await fs.readFile('views/feed-template.hbs', 'utf-8');
+    feedTemplate = Handlebars.compile(templateString);
+    console.log('Handlebars template loaded and compiled.');
+
+    // Ensure public directory exists
+    await fs.ensureDir('public');
+    console.log('Public directory ensured.');
+
+    // Generate the HTML page
+    await generateHtmlPage();
+  } catch (error) {
+    console.error('Error during application execution:', error);
+    process.exit(1);
+  }
+}
+
+main();

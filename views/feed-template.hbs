@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My RSS Feed Aggregator</title>
+  <style>
+    body { font-family: sans-serif; line-height: 1.6; padding: 20px; background-color: #f4f4f4; color: #333; }
+    .container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h1 { color: #333; text-align: center; }
+    .feed-item { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+    .feed-item:last-child { border-bottom: none; }
+    .feed-item h2 { margin: 0 0 5px 0; font-size: 1.4em; }
+    .feed-item h2 a { color: #007bff; text-decoration: none; }
+    .feed-item h2 a:hover { text-decoration: underline; }
+    .feed-item p { margin: 5px 0; }
+    .feed-item .meta { font-size: 0.8em; color: #666; margin-bottom: 10px; }
+    .feed-item .snippet { font-size: 0.9em; color: #444; margin-top: 10px;}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Aggregated RSS Feeds</h1>
+    {{#if items}}
+      {{#each items}}
+      <div class="feed-item">
+        <h2><a href="{{link}}" target="_blank" rel="noopener noreferrer">{{title}}</a></h2>
+        <p class="meta">From: {{feedTitle}} | Published: {{pubDate}}</p>
+        {{#if snippet}}
+        <p class="snippet">{{snippet}}</p>
+        {{/if}}
+      </div>
+      {{/each}}
+    {{else}}
+      <p>No items to display. Check console for errors if feeds are configured, or if feeds returned no items.</p>
+    {{/if}}
+  </div>
+</body>
+</html>
