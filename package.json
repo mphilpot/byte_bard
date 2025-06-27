@@ -1,0 +1,25 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "Generate up my news feed from multiple sources",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mphilpot/byte_bard.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/mphilpot/byte_bard/issues"
+  },
+  "homepage": "https://github.com/mphilpot/byte_bard#readme",
+  "dependencies": {
+    "fs-extra": "^11.3.0",
+    "rss-parser": "^3.13.0"
+  }
+}
